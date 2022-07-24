@@ -16,7 +16,7 @@
 #define BEEP_PIN 9 // Зуммер
 
 #define BUS_ID 6
-#define PIN_REDE A1
+#define PIN_REDE A2
 
 #include <Wire.h>
 #include <GyverButton.h>
