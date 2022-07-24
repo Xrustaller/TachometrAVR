@@ -15,14 +15,23 @@
 
 #define BEEP_PIN 9 // Зуммер
 
+#define BUS_ID 6
+#define PIN_REDE A1
+
 #include <Wire.h>
 #include <GyverButton.h>
 #include <DTM1650.h>
+#include <ModbusRtu.h>
 
 DTM1650 display;
 
 GButton button_start(BTN_PIN_START);
 GButton button_stop(BTN_PIN_STOP);
+
+Modbus bus(BUS_ID, 0, PIN_REDE);
+int8_t state = 0;
+
+uint16_t temp[1] = { 0 };
 
 volatile unsigned long t_interruptionTime;
 
@@ -98,6 +107,12 @@ void relay_pulse(const bool pulse)
     }
 }
 
+void t_interruption()
+{
+    t_interruptionTime = millis();
+    t_interruptionCounter++;
+}
+
 void setup()
 {
     pinMode(FIRST_GROUP_RELAY_PIN_1, OUTPUT);
@@ -107,6 +122,7 @@ void setup()
     button_start.setClickTimeout(50);
     button_stop.setClickTimeout(50);
 
+    bus.begin(19200);
     Wire.begin();
     display.init();
     display.set_brightness(DTM1650_BRIGHTNESS_MAX);
@@ -116,6 +132,7 @@ void setup()
 
 void loop()
 {
+    state = bus.poll(temp, 2);
     button_start.tick();
     button_stop.tick();
 
@@ -154,6 +171,7 @@ void loop()
         t_previousTime = t_currentTime;
         //i++;
         display.write_num(t_RPM);
+        temp[0] = t_RPM;
     }
 
     relay_pulse(false);
@@ -171,8 +189,3 @@ void loop()
     }*/
 }
 
-void t_interruption()
-{
-    t_interruptionTime = millis();
-    t_interruptionCounter++;
-}
