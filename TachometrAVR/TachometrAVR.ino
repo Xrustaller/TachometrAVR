@@ -1,24 +1,19 @@
 #define TACHOMETER_PIN 2
 
-#define DIRKI 12
+#define DIRKI 4 //
 
-#define TACHOMETER_TIME_INTERVAL 300
+#define TACHOMETER_TIME_INTERVAL 800
 
-#define FIRST_GROUP_RELAY_MODE 1 // 1 - Полное включение, 2 - пульсация
-#define FIRST_GROUP_RELAY_MODE_PIN 2 // 1 - прямое реле, 2 - обратное реле
+#define FIRST_GROUP_RELAY_MODE 1 //  1 - РџРѕР»РЅРѕРµ РІРєР»СЋС‡РµРЅРёРµ, 2 - РїСѓР»СЊСЃР°С†РёСЏ
+#define FIRST_GROUP_RELAY_MODE_PIN 1 //  1 - РїСЂСЏРјРѕРµ СЂРµР»Рµ, 2 - РѕР±СЂР°С‚РЅРѕРµ СЂРµР»Рµ
 
-#define SECOND_GROUP_RELAY_MODE 1 // 1 - Полное включение, 2 - пульсация
-#define SECOND_GROUP_RELAY_MODE_PIN 2 // 1 - прямое реле, 2 - обратное реле
+#define BTN_PIN_START 3 // СЃС‚Р°СЂС‚
+#define BTN_PIN_STOP 4 // СЃС‚РѕРї
 
-#define BTN_PIN_START 3 // Кнопка СТАРТ/СТОП
+#define FIRST_GROUP_RELAY_PIN_1 6
+#define FIRST_GROUP_RELAY_PIN_2 7
 
-#define FIRST_GROUP_RELAY_PIN_1 11
-#define FIRST_GROUP_RELAY_PIN_2 12
-
-#define SECOND_GROUP_RELAY_PIN_1 6
-#define SECOND_GROUP_RELAY_PIN_2 7
-
-#define BEEP_PIN 9 // Пин пьезо (при выборе 9 пина, 10 - недоступен из-за шим)
+#define BEEP_PIN 9 // Р—СѓРјРјРµСЂ
 
 #include <Wire.h>
 #include <GyverButton.h>
@@ -27,6 +22,7 @@
 DTM1650 display;
 
 GButton button_start(BTN_PIN_START);
+GButton button_stop(BTN_PIN_STOP);
 
 volatile unsigned long t_interruptionTime;
 
@@ -54,16 +50,6 @@ void relay_on()
     digitalWrite(FIRST_GROUP_RELAY_PIN_2, LOW);
 #endif
 #endif
-
-#if SECOND_GROUP_RELAY_MODE == 1
-#if SECOND_GROUP_RELAY_MODE_PIN == 1
-    digitalWrite(SECOND_GROUP_RELAY_PIN_1, HIGH);
-    digitalWrite(SECOND_GROUP_RELAY_PIN_2, HIGH);
-#else
-    digitalWrite(SECOND_GROUP_RELAY_PIN_1, LOW);
-    digitalWrite(SECOND_GROUP_RELAY_PIN_2, LOW);
-#endif
-#endif
 }
 
 void relay_off()
@@ -74,14 +60,6 @@ void relay_off()
 #else
     digitalWrite(FIRST_GROUP_RELAY_PIN_1, HIGH);
     digitalWrite(FIRST_GROUP_RELAY_PIN_2, HIGH);
-#endif
-
-#if SECOND_GROUP_RELAY_MODE_PIN == 1
-    digitalWrite(SECOND_GROUP_RELAY_PIN_1, LOW);
-    digitalWrite(SECOND_GROUP_RELAY_PIN_2, LOW);
-#else
-    digitalWrite(SECOND_GROUP_RELAY_PIN_1, HIGH);
-    digitalWrite(SECOND_GROUP_RELAY_PIN_2, HIGH);
 #endif
 }
 
@@ -100,16 +78,6 @@ void relay_pulse(const bool pulse)
             digitalWrite(FIRST_GROUP_RELAY_PIN_2, HIGH);
 #endif
 #endif
-
-#if SECOND_GROUP_RELAY_MODE == 2
-#if SECOND_GROUP_RELAY_MODE_PIN == 1
-            digitalWrite(SECOND_GROUP_RELAY_PIN_1, LOW);
-            digitalWrite(SECOND_GROUP_RELAY_PIN_2, LOW);
-#else
-            digitalWrite(SECOND_GROUP_RELAY_PIN_1, HIGH);
-            digitalWrite(SECOND_GROUP_RELAY_PIN_2, HIGH);
-#endif
-#endif
             is_relay_pulse = false;
         }
     }
@@ -125,17 +93,6 @@ void relay_pulse(const bool pulse)
         digitalWrite(FIRST_GROUP_RELAY_PIN_2, LOW);
 #endif
 #endif
-
-#if SECOND_GROUP_RELAY_MODE == 2
-#if SECOND_GROUP_RELAY_MODE_PIN == 1
-        digitalWrite(SECOND_GROUP_RELAY_PIN_1, HIGH);
-        digitalWrite(SECOND_GROUP_RELAY_PIN_2, HIGH);
-#else
-        digitalWrite(SECOND_GROUP_RELAY_PIN_1, LOW);
-        digitalWrite(SECOND_GROUP_RELAY_PIN_2, LOW);
-#endif
-#endif
-
         is_relay_pulse = true;
         timer_relay_pulse = millis();
     }
@@ -145,33 +102,36 @@ void setup()
 {
     pinMode(FIRST_GROUP_RELAY_PIN_1, OUTPUT);
     pinMode(FIRST_GROUP_RELAY_PIN_2, OUTPUT);
-    pinMode(SECOND_GROUP_RELAY_PIN_1, OUTPUT);
-    pinMode(SECOND_GROUP_RELAY_PIN_2, OUTPUT);
     relay_off();
-	
+
     button_start.setClickTimeout(50);
-	
+    button_stop.setClickTimeout(50);
+
     Wire.begin();
     display.init();
     display.set_brightness(DTM1650_BRIGHTNESS_MAX);
-	
+
     attachInterrupt(digitalPinToInterrupt(TACHOMETER_PIN), t_interruption, RISING);
 }
 
 void loop()
 {
     button_start.tick();
+    button_stop.tick();
 
-    if (button_start.isSingle())
+    if (relay)
     {
-    	if (relay)
-    	{
+        if (button_stop.isSingle())
+        {
             relay = false;
             relay_off();
             relay_pulse(true);
             tone(BEEP_PIN, 2000, 100);
-    	}
-        else
+        }
+    }
+    else
+    {
+        if (button_start.isSingle())
         {
             relay = true;
             relay_on();
@@ -179,17 +139,17 @@ void loop()
             tone(BEEP_PIN, 3000, 100);
         }
     }
-	
-	if (millis() - t_previousTime >= TACHOMETER_TIME_INTERVAL) 
+
+    if (millis() - t_previousTime >= TACHOMETER_TIME_INTERVAL)
     {
-		unsigned long t_currentTime;
-        
+        unsigned long t_currentTime;
+
         byte t_counter;
         noInterrupts();
         t_counter = t_interruptionCounter;
-        t_currentTime = t_interruptionTime;
         t_interruptionCounter = 0;
-		interrupts();
+        t_currentTime = t_interruptionTime;
+        interrupts();
         t_RPM = 60000 / ((t_currentTime - t_previousTime) * DIRKI / t_counter);
         t_previousTime = t_currentTime;
         //i++;
@@ -197,9 +157,9 @@ void loop()
     }
 
     relay_pulse(false);
-	
-	/*if (i >= 5)
-	{
+
+    /*if (i >= 5)
+    {
         for (byte i = 0; i < 5; i++)
         {
             t_RPM += buffer_arr[i];
@@ -208,12 +168,11 @@ void loop()
         display.write_num(t_RPM);
         t_RPM = 0;
         i = 0;
-	}*/
+    }*/
 }
 
 void t_interruption()
 {
-	t_interruptionTime = millis();
-	t_interruptionCounter++;
+    t_interruptionTime = millis();
+    t_interruptionCounter++;
 }
-
