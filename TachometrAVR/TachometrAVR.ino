@@ -108,6 +108,7 @@ void relay_pulse(const bool pulse)
 
 void t_interruption()
 {
+    delay(1);
     t_interruptionTime = millis();
     t_interruptionCounter++;
 }
@@ -131,7 +132,7 @@ void setup()
 
 void loop()
 {
-    state = bus.poll(temp, 2);
+    delay(50);
     button_start.tick();
     button_stop.tick();
 
@@ -168,13 +169,14 @@ void loop()
         t_RPM = 60000 / ((t_currentTime - t_previousTime) * DIRKI / t_counter);
         t_previousTime = t_currentTime;
         //i++;
+        delay(10);
         display.write_num(t_RPM);
         temp[0] = t_RPM;
     }
 
-    relay_pulse(false);
+    state = bus.poll(temp, 2);
 
-    delay(50);
+    relay_pulse(false);
 
     /*if (i >= 5)
     {
