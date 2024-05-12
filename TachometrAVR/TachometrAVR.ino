@@ -174,6 +174,8 @@ void loop()
 
     relay_pulse(false);
 
+    delay(50);
+
     /*if (i >= 5)
     {
         for (byte i = 0; i < 5; i++)
