@@ -15,11 +15,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="TachometrAVR.ino" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="__vm\.TachometrAVR.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="TachometrAVR.ino" />
   </ItemGroup>
 </Project>

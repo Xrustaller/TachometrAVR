@@ -16,7 +16,6 @@
 #define BEEP_PIN 9 // Зуммер
 
 #define BUS_ID 6
-#define PIN_REDE A2
 
 #include <Wire.h>
 #include <GyverButton.h>
@@ -28,7 +27,7 @@ DTM1650 display;
 GButton button_start(BTN_PIN_START);
 GButton button_stop(BTN_PIN_STOP);
 
-Modbus bus(BUS_ID, 0, PIN_REDE);
+Modbus bus(BUS_ID, 0);
 int8_t state = 0;
 
 uint16_t temp[1] = { 0 };
@@ -122,7 +121,7 @@ void setup()
     button_start.setClickTimeout(50);
     button_stop.setClickTimeout(50);
 
-    bus.begin(19200);
+    bus.begin(9600);
     Wire.begin();
     display.init();
     display.set_brightness(DTM1650_BRIGHTNESS_MAX);
@@ -136,27 +135,26 @@ void loop()
     button_start.tick();
     button_stop.tick();
 
-    if (relay)
+    if (relay && button_stop.isSingle())
     {
-        if (button_stop.isSingle())
-        {
-            relay = false;
-            relay_off();
-            relay_pulse(true);
-            tone(BEEP_PIN, 2000, 100);
-        }
-    }
-    else
-    {
-        if (button_start.isSingle())
-        {
-            relay = true;
-            relay_on();
-            relay_pulse(true);
-            tone(BEEP_PIN, 3000, 100);
-        }
+        button_start.resetStates();
+        button_stop.resetStates();
+        relay = false;
+        relay_off();
+        relay_pulse(true);
+        tone(BEEP_PIN, 500, 500);
     }
 
+	if (button_start.isSingle())
+	{
+        button_start.resetStates();
+        button_stop.resetStates();
+		relay = true;
+        relay_on();
+        relay_pulse(true);
+        tone(BEEP_PIN, 500, 500);
+	}
+    
     if (millis() - t_previousTime >= TACHOMETER_TIME_INTERVAL)
     {
         unsigned long t_currentTime;
@@ -188,4 +186,3 @@ void loop()
         i = 0;
     }*/
 }
-
